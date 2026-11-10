@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Earn USDT</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://unpkg.com/@tonconnect/ui@2/dist/tonconnect-ui.min.js"></script>
+<script src="//libtl.com/sdk.js" data-zone="12229142" data-sdk="show_12229142"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; background: #0f1220; color: #fff; padding-bottom: 80px; }
+  header { padding: 18px 16px; background: linear-gradient(135deg, #2b5876, #4e4376); }
+  .hello { font-size: 14px; opacity: .85; }
+  .balance { font-size: 32px; font-weight: 700; margin-top: 4px; }
+  .balance small { font-size: 14px; opacity: .8; }
+  main { padding: 16px; }
+  .page { display: none; }
+  .page.active { display: block; }
+  h2 { font-size: 18px; margin-bottom: 12px; }
+  .card { background: #1a1f35; border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .muted { color: #9aa3c7; font-size: 13px; }
+  .reward { color: #3ddc97; font-weight: 600; }
+  button { border: 0; border-radius: 10px; padding: 10px 14px; font-weight: 600; font-size: 14px; cursor: pointer; background: #3b82f6; color: #fff; }
+  button.secondary { background: #2d3454; }
+  button.green { background: #22c55e; }
+  button:disabled { opacity: .5; }
+  .big { width: 100%; padding: 14px; font-size: 16px; margin-top: 10px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat { background: #1a1f35; border-radius: 14px; padding: 14px; }
+  .stat b { display: block; font-size: 20px; margin-top: 4px; }
+  input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #2d3454; background: #0f1220; color: #fff; font-size: 16px; margin-top: 8px; }
+  .wallet { word-break: break-all; font-size: 12px; color: #9aa3c7; margin-top: 8px; }
+  nav { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: #151a2d; border-top: 1px solid #252b45; }
+  nav button { flex: 1; background: none; border-radius: 0; padding: 12px 4px; color: #9aa3c7; font-size: 12px; }
+  nav button.active { color: #fff; }
+  nav span { display: block; font-size: 20px; }
+  #toast { position: fixed; left: 16px; right: 16px; bottom: 90px; padding: 12px; border-radius: 10px; background: #333a5c; text-align: center; display: none; z-index: 10; }
+  #toast.ok { background: #166534; }
+  #toast.err { background: #991b1b; }
+  .done { color: #3ddc97; font-size: 13px; font-weight: 600; }
+  .btns { display: flex; gap: 6px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hello" id="hello">Loading...</div>
+  <div class="balance"><span id="balance">0.0000</span> <small>USDT</small></div>
+</header>
+
+<main>
+  <section class="page active" id="page-tasks">
+    <h2>Channel Tasks</h2>
+    <div id="task-list"><p class="muted">Loading tasks...</p></div>
+  </section>
+
+  <section class="page" id="page-ads">
+    <h2>Watch Ads</h2>
+    <div class="card">
+      <div class="row"><span class="muted">Reward per ad</span><span class="reward" id="ad-reward">0.001 USDT</span></div>
+      <div class="row" style="margin-top:8px"><span class="muted">Watched today</span><span id="ad-today">0 / 20</span></div>
+      <div class="row" style="margin-top:8px"><span class="muted">Remaining today</span><span id="ad-left">20</span></div>
+      <button class="big green" id="watch-btn">Watch Ad</button>
+    </div>
+  </section>
+
+  <section class="page" id="page-profile">
+    <h2>Profile</h2>
+    <div class="grid">
+      <div class="stat"><span class="muted">Total ads</span><b id="p-total-ads">0</b></div>
+      <div class="stat"><span class="muted">Ads today</span><b id="p-today-ads">0</b></div>
+      <div class="stat"><span class="muted">Tasks done</span><b id="p-tasks">0</b></div>
+      <div class="stat"><span class="muted">Total earned</span><b id="p-earned">0</b></div>
+      <div class="stat"><span class="muted">Withdrawn</span><b id="p-withdrawn">0</b></div>
+      <div class="stat"><span class="muted">Balance</span><b id="p-balance">0</b></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="muted">Wallet (TON)</div>
+      <div id="ton-connect" style="margin-top:10px"></div>
+      <div class="wallet" id="wallet-text">Not connected</div>
+    </div>
+  </section>
+
+  <section class="page" id="page-withdraw">
+    <h2>Withdraw</h2>
+    <div class="card">
+      <div class="row"><span class="muted">Available</span><span class="reward"><span id="w-balance">0</span> USDT</span></div>
+      <div class="row" style="margin-top:8px"><span class="muted">Minimum</span><span><span id="w-min">1</span> USDT</span></div>
+      <div class="wallet" id="w-wallet">Wallet: not connected</div>
+      <input type="number" id="w-amount" placeholder="Amount in USDT" step="0.01" min="0">
+      <button class="big" id="withdraw-btn">Request Withdraw</button>
+      <p class="muted" style="margin-top:10px">Payments are sent manually in USDT (TON network) to your connected wallet.</p>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button class="active" data-page="tasks"><span>📋</span>Tasks</button>
+  <button data-page="ads"><span>📺</span>Ads</button>
+  <button data-page="profile"><span>👤</span>Profile</button>
+  <button data-page="withdraw"><span>💸</span>Withdraw</button>
+</nav>
+
+<div id="toast"></div>
+
+<script>
+const API_URL = 'https://goodjoob.app.n8n.cloud/webhook/tg-earn-mini-app-api';
+const AD_FUNCTION = 'show_12229142';
+
+const tg = window.Telegram ? window.Telegram.WebApp : null;
+if (tg) { tg.ready(); tg.expand(); }
+const tgUser = tg && tg.initDataUnsafe ? tg.initDataUnsafe.user : null;
+
+let state = { user: null, ads: null, withdraw: null };
+
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => Number(n || 0).toFixed(4);
+const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function toast(msg, type) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = type || '';
+  t.style.display = 'block';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.display = 'none'; }, 3000);
+}
+
+async function api(action, extra) {
+  const body = Object.assign({
+    action,
+    telegram_id: tgUser ? String(tgUser.id) : '',
+    username: tgUser ? (tgUser.username || '') : '',
+    first_name: tgUser ? (tgUser.first_name || '') : ''
+  }, extra || {});
+  try {
+    const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const data = await res.json().catch(() => ({}));
+    if (!data || data.ok === undefined) return { ok: false, error: 'Server error. Try again.' };
+    return data;
+  } catch (e) {
+    return { ok: false, error: 'Network error. Check your internet.' };
+  }
+}
+
+document.querySelectorAll('nav button').forEach((b) => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('nav button').forEach((x) => x.classList.remove('active'));
+    document.querySelectorAll('.page').forEach((x) => x.classList.remove('active'));
+    b.classList.add('active');
+    $('page-' + b.dataset.page).classList.add('active');
+  });
+});
+
+function render() {
+  const u = state.user || {};
+  const a = state.ads || { reward_per_ad: 0.001, daily_ad_limit: 20, remaining_today: 20 };
+  const w = state.withdraw || { min_withdraw: 1 };
+  $('hello').textContent = 'Hi, ' + (u.first_name || u.username || 'friend');
+  $('balance').textContent = fmt(u.balance);
+  $('ad-reward').textContent = a.reward_per_ad + ' USDT';
+  $('ad-today').textContent = (u.ads_today || 0) + ' / ' + a.daily_ad_limit;
+  $('ad-left').textContent = a.remaining_today;
+  $('watch-btn').disabled = a.remaining_today <= 0;
+  $('watch-btn').textContent = a.remaining_today <= 0 ? 'Daily limit reached' : 'Watch Ad';
+  $('p-total-ads').textContent = u.total_ads || 0;
+  $('p-today-ads').textContent = u.ads_today || 0;
+  $('p-tasks').textContent = u.tasks_completed || 0;
+  $('p-earned').textContent = fmt(u.total_earned);
+  $('p-withdrawn').textContent = fmt(u.total_withdrawn);
+  $('p-balance').textContent = fmt(u.balance);
+  $('w-balance').textContent = fmt(u.balance);
+  $('w-min').textContent = w.min_withdraw;
+  $('wallet-text').textContent = u.wallet_address ? 'Saved: ' + u.wallet_address : 'Not connected';
+  $('w-wallet').textContent = 'Wallet: ' + (u.wallet_address || 'not connected (go to Profile)');
+}
+
+async function loadProfile() {
+  const r = await api('profile');
+  if (!r.ok) { toast(r.error, 'err'); return; }
+  state.user = r.user; state.ads = r.ads; state.withdraw = r.withdraw;
+  render();
+}
+
+async function loadTasks() {
+  const r = await api('get_tasks');
+  const box = $('task-list');
+  if (!r.ok) { box.innerHTML = '<p class="muted">' + esc(r.error) + '</p>'; return; }
+  if (!r.tasks || !r.tasks.length) { box.innerHTML = '<p class="muted">No tasks right now. Check back later.</p>'; return; }
+  box.innerHTML = r.tasks.map((t) =>
+    '<div class="card"><div class="row"><div><b>' + esc(t.title) + '</b><div class="muted">' + esc(t.channel_username) + '</div>' +
+    '<div class="reward">+' + t.reward + ' USDT</div></div>' +
+    (t.completed ? '<span class="done">✓ Done</span>' :
+      '<div class="btns"><button class="secondary" data-join="' + esc(t.channel_link) + '">Join</button>' +
+      '<button data-verify="' + esc(t.task_key) + '">Verify</button></div>') +
+    '</div></div>'
+  ).join('');
+  box.querySelectorAll('[data-join]').forEach((b) => b.addEventListener('click', () => {
+    const link = b.dataset.join;
+    if (tg && tg.openTelegramLink && link.startsWith('https://t.me/')) tg.openTelegramLink(link); else window.open(link, '_blank');
+  }));
+  box.querySelectorAll('[data-verify]').forEach((b) => b.addEventListener('click', async () => {
+    b.disabled = true; b.textContent = '...';
+    const res = await api('verify_task', { task_key: b.dataset.verify });
+    if (res.ok) {
+      toast('Task completed! +' + res.reward + ' USDT', 'ok');
+      await loadProfile(); await loadTasks();
+    } else {
+      toast(res.error, 'err');
+      b.disabled = false; b.textContent = 'Verify';
+    }
+  }));
+}
+
+$('watch-btn').addEventListener('click', async () => {
+  const btn = $('watch-btn');
+  const showAd = window[AD_FUNCTION];
+  if (typeof showAd !== 'function') { toast('Ads are not ready yet. Try again in a few seconds.', 'err'); return; }
+  btn.disabled = true; btn.textContent = 'Loading ad...';
+  try {
+    await showAd();
+    const r = await api('ad_watched');
+    if (r.ok) { toast('+' + r.reward + ' USDT added!', 'ok'); await loadProfile(); }
+    else { toast(r.error, 'err'); render(); }
+  } catch (e) {
+    toast('No ad available right now. Try again later.', 'err');
+    render();
+  }
+});
+
+$('withdraw-btn').addEventListener('click', async () => {
+  const amount = Number($('w-amount').value);
+  const min = state.withdraw ? state.withdraw.min_withdraw : 1;
+  if (!state.user || !state.user.wallet_address) { toast('Please connect your wallet first (Profile tab).', 'err'); return; }
+  if (!(amount > 0)) { toast('Enter a valid amount', 'err'); return; }
+  if (amount < min) { toast('Minimum withdraw is ' + min + ' USDT', 'err'); return; }
+  const btn = $('withdraw-btn');
+  btn.disabled = true; btn.textContent = 'Sending...';
+  const r = await api('withdraw', { amount });
+  btn.disabled = false; btn.textContent = 'Request Withdraw';
+  if (r.ok) { toast('Withdraw request sent! Status: pending', 'ok'); $('w-amount').value = ''; await loadProfile(); }
+  else toast(r.error, 'err');
+});
+
+let tonConnectUI = null;
+try {
+  tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+    manifestUrl: window.location.origin + '/tonconnect-manifest.json',
+    buttonRootId: 'ton-connect'
+  });
+  tonConnectUI.onStatusChange(async (wallet) => {
+    if (!wallet || !state.user) return;
+    let address = wallet.account.address;
+    try { address = TON_CONNECT_UI.toUserFriendlyAddress(wallet.account.address); } catch (e) {}
+    if (address === state.user.wallet_address) return;
+    const r = await api('connect_wallet', { wallet_address: address });
+    if (r.ok) { toast('Wallet saved!', 'ok'); state.user.wallet_address = r.wallet_address; render(); }
+    else toast(r.error, 'err');
+  });
+} catch (e) {
+  $('wallet-text').textContent = 'Wallet connect failed to load. Reopen the app.';
+}
+
+(async function start() {
+  if (!tgUser) {
+    $('hello').textContent = 'Please open this app inside Telegram';
+    $('task-list').innerHTML = '<p class="muted">Open this app from the Telegram bot.</p>';
+    return;
+  }
+  await loadProfile();
+  await loadTasks();
+})();
+</script>
+</body>
+</html>
